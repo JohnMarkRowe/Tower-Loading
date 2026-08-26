@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tower Loading Study</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-title">
+    <h1>Radio Communications Tower Loading Study</h1>
+    <p class="subtitle">Wind &amp; ice load estimation across wind speed and ice thickness increments</p>
+  </div>
+  <div class="header-actions">
+    <button id="btnNew" class="btn btn-ghost">New Study</button>
+    <button id="btnSave" class="btn btn-ghost">Save</button>
+    <label class="btn btn-ghost file-btn">Load
+      <input type="file" id="fileLoad" accept="application/json" hidden>
+    </label>
+    <button id="btnExport" class="btn btn-ghost">Export JSON</button>
+    <button id="btnPrint" class="btn btn-primary">Print Report</button>
+  </div>
+</header>
+
+<div class="disclaimer">
+  <strong>Preliminary planning tool — not a substitute for a licensed Professional Engineer.</strong>
+  This tool estimates wind and ice load <em>demand</em> using standard TIA‑222 / ASCE 7 methodology.
+  It does <strong>not</strong> contain manufacturer tower capacity ratings — you must supply your tower's
+  allowable moment/weight capacity from its original engineering data, a manufacturer load chart, or a PE
+  evaluation. Tower foundations, guy anchors, and other supporting structures are assumed adequate.
+  Do not add, remove, or modify tower loading based solely on the output of this tool.
+</div>
+
+<nav class="tabs" id="tabNav">
+  <button class="tab-btn active" data-tab="tower">1. Tower</button>
+  <button class="tab-btn" data-tab="appurtenances">2. Antennas &amp; Appurtenances</button>
+  <button class="tab-btn" data-tab="feedlines">3. Feedlines</button>
+  <button class="tab-btn" data-tab="results">4. Loading Study</button>
+  <button class="tab-btn" data-tab="methodology">Methodology</button>
+</nav>
+
+<main id="app">
+
+  <!-- ============ TAB 1: TOWER ============ -->
+  <section class="tab-panel active" id="tab-tower">
+    <div class="card">
+      <h2>Tower Identification</h2>
+      <div class="grid grid-3">
+        <label>Site / Study Name
+          <input type="text" id="t_siteName" placeholder="e.g. Pinnacle Mtn Repeater Site">
+        </label>
+        <label>Tower Owner / Call Sign
+          <input type="text" id="t_owner" placeholder="e.g. N5XFW">
+        </label>
+        <label>Study Date
+          <input type="date" id="t_studyDate">
+        </label>
+      </div>
+      <div class="grid grid-3">
+        <label>Manufacturer
+          <select id="t_manufacturer">
+            <option>Rohn</option>
+            <option>Trylon</option>
+            <option>Sabre Industries</option>
+            <option>US Tower</option>
+            <option>Universal Towers</option>
+            <option>Aluma Tower</option>
+            <option>Delhi (Valmont)</option>
+            <option>Pirod</option>
+            <option>Unknown / Not Marked</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Model / Series
+          <input type="text" id="t_model" placeholder="e.g. 25G, SSV, T-200">
+        </label>
+        <label>Structure Type
+          <select id="t_structureType">
+            <option value="guyed">Guyed Lattice</option>
+            <option value="selfsupport">Self-Supporting Lattice</option>
+            <option value="monopole">Monopole</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Manufacturer/model are for record-keeping only — this tool does not include proprietary
+        manufacturer capacity charts. Enter your tower's actual rated capacity below.</p>
+    </div>
+
+    <div class="card">
+      <h2>Geometry &amp; Age</h2>
+      <div class="grid grid-4">
+        <label>Total Height (ft)
+          <input type="number" id="t_height" min="0" step="1" value="150">
+        </label>
+        <label>Average Face Width (in)
+          <input type="number" id="t_faceWidth" min="0" step="1" value="18">
+        </label>
+        <label>Estimated Solidity Ratio (ε)
+          <input type="number" id="t_solidity" min="0.05" max="0.5" step="0.01" value="0.20">
+        </label>
+        <label>Structure Self-Weight (lb)
+          <input type="number" id="t_selfWeight" min="0" step="10" value="3000">
+        </label>
+      </div>
+      <div class="grid grid-4">
+        <label>Year Built
+          <input type="number" id="t_yearBuilt" min="1930" max="2100" step="1" value="1995">
+        </label>
+        <label>Tower Age (yr) <span class="calc-badge">calc</span>
+          <input type="number" id="t_age" readonly>
+        </label>
+        <label>Age-Based Capacity Derating (%)
+          <input type="number" id="t_derating" min="0" max="90" step="1" value="10">
+        </label>
+        <label>Exposure Category
+          <select id="t_exposure">
+            <option value="B">B — Urban/Suburban/Wooded</option>
+            <option value="C" selected>C — Open Terrain (typical)</option>
+            <option value="D">D — Flat/Open Water/Coastal</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Solidity ratio (ε) is the ratio of solid steel area to total face area for one tower face —
+        typical lattice communication towers run 0.10–0.30. Leave the default 0.20 if unknown, or override the
+        computed structure wind load below with a manufacturer EPA/ft value.</p>
+    </div>
+
+    <div class="card">
+      <h2>Design Standard Comparison</h2>
+      <div class="grid grid-4">
+        <label>Original Design Standard
+          <select id="t_originalStd">
+            <option>EIA RS-222-A/B (pre-1970s)</option>
+            <option>EIA/TIA-222-C</option>
+            <option>TIA/EIA-222-D</option>
+            <option>TIA/EIA-222-E</option>
+            <option>TIA-222-F</option>
+            <option>TIA-222-G</option>
+            <option>TIA-222-H</option>
+            <option>Unknown</option>
+          </select>
+        </label>
+        <label>Original Design Wind Speed (mph)
+          <input type="number" id="t_origWind" min="0" step="1" value="70">
+        </label>
+        <label>Original Wind Speed Basis
+          <select id="t_origBasis">
+            <option value="fastestmile">Fastest-Mile</option>
+            <option value="3sec">3-Second Gust</option>
+          </select>
+        </label>
+        <label>3-Sec Gust Equivalent <span class="calc-badge">calc</span>
+          <input type="number" id="t_origWind3s" readonly>
+        </label>
+      </div>
+      <div class="grid grid-3">
+        <label>Current Code-Required Standard
+          <select id="t_currentStd">
+            <option>TIA-222-H</option>
+            <option>TIA-222-G</option>
+            <option>ASCE 7-22 (local adoption)</option>
+            <option>Other / Local AHJ</option>
+          </select>
+        </label>
+        <label>Current Required Wind Speed (mph, 3-sec gust)
+          <input type="number" id="t_currentWind" min="0" step="1" value="90">
+        </label>
+        <label>&nbsp;
+          <div id="t_windCompareResult" class="result-chip">—</div>
+        </label>
+      </div>
+      <p class="hint">Fastest-mile to 3-second gust conversion uses the common approximation V<sub>3s</sub> ≈
+        1.2 × V<sub>fm</sub> (ASCE 7 commentary) — treat as an approximation for planning discussion, not a
+        code substitution.</p>
+    </div>
+
+    <div class="card">
+      <h2>Rated Structural Capacity <span class="required-tag">enter from manufacturer / PE data</span></h2>
+      <div class="grid grid-3">
+        <label>Allowable Base Overturning Moment (ft-lb)
+          <input type="number" id="t_allowMoment" min="0" step="1000" placeholder="e.g. 250000">
+        </label>
+        <label>Allowable Total Supported Weight (lb)
+          <input type="number" id="t_allowWeight" min="0" step="10" placeholder="e.g. 1200">
+        </label>
+        <label>Capacity Reference Wind Speed (mph)
+          <input type="number" id="t_capRefWind" min="0" step="1" placeholder="e.g. 90">
+        </label>
+      </div>
+      <p class="hint">Leave blank if unavailable — the Loading Study tab will still compute demand loads and
+        display required EPA/moment/weight, but capacity ratio columns will read "N/A" until these are provided.</p>
+    </div>
+
+    <div class="card">
+      <h2>Advanced Wind Parameters</h2>
+      <div class="grid grid-4">
+        <label>Topographic Factor K<sub>zt</sub>
+          <input type="number" id="t_kzt" min="1" step="0.01" value="1.00">
+        </label>
+        <label>Directionality Factor K<sub>d</sub>
+          <input type="number" id="t_kd" min="0.5" step="0.01" value="0.85">
+        </label>
+        <label>Ground Elevation Factor K<sub>e</sub>
+          <input type="number" id="t_ke" min="0.5" step="0.01" value="1.00">
+        </label>
+        <label>Gust Response Factor G<sub>h</sub>
+          <input type="number" id="t_gh" min="1" step="0.01" value="1.25">
+        </label>
+      </div>
+      <p class="hint">Defaults are typical planning-level values for lattice towers per TIA-222-H. Adjust only if
+        you have site-specific topographic or dynamic analysis data.</p>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2: APPURTENANCES ============ -->
+  <section class="tab-panel" id="tab-appurtenances">
+    <div class="card">
+      <h2>Antennas, Dishes, Mounts &amp; Other Appurtenances</h2>
+      <p class="hint">Enter bare (no-ice) Effective Projected Area (EPA) and weight from the spec sheet for each
+        item, or compute EPA from dimensions using the shape helper. Ice growth is applied automatically in the
+        Loading Study tab.</p>
+      <div class="table-wrap">
+        <table id="appTable">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Shape</th>
+              <th>Dim 1 (ft)</th>
+              <th>Dim 2 (ft)</th>
+              <th>Bare EPA (ft²) <span class="calc-badge">calc</span></th>
+              <th>Weight (lb)</th>
+              <th>Mount Height (ft)</th>
+              <th>Qty</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="appTableBody"></tbody>
+        </table>
+      </div>
+      <button id="btnAddApp" class="btn btn-secondary">+ Add Appurtenance</button>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3: FEEDLINES ============ -->
+  <section class="tab-panel" id="tab-feedlines">
+    <div class="card">
+      <h2>Coaxial Cable / Feedline Runs</h2>
+      <p class="hint">Select a common cable size (preloaded OD &amp; weight/ft) or choose Custom. Each run is
+        treated as a vertical round member from the bottom height to the top (mount) height.</p>
+      <div class="table-wrap">
+        <table id="feedTable">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Cable Type</th>
+              <th>OD (in)</th>
+              <th>Weight (lb/ft)</th>
+              <th>Bottom Height (ft)</th>
+              <th>Top Height (ft)</th>
+              <th>Qty (runs)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="feedTableBody"></tbody>
+        </table>
+      </div>
+      <button id="btnAddFeed" class="btn btn-secondary">+ Add Feedline Run</button>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4: RESULTS ============ -->
+  <section class="tab-panel" id="tab-results">
+    <div class="card">
+      <h2>Loading Study Matrix</h2>
+      <div class="grid grid-3">
+        <label>Display Metric
+          <select id="r_metric">
+            <option value="momentRatio">Overturning Moment — % of Allowable</option>
+            <option value="weightRatio">Total Weight — % of Allowable</option>
+            <option value="moment">Overturning Moment (ft-lb)</option>
+            <option value="weight">Total Weight (lb)</option>
+            <option value="epa">Total Required EPA (ft²)</option>
+          </select>
+        </label>
+        <label>&nbsp;
+          <div id="r_govCase" class="result-chip">—</div>
+        </label>
+        <label>&nbsp;
+          <div id="r_windCode" class="result-chip">—</div>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="matrixTable"></table>
+      </div>
+      <div class="legend">
+        <span class="swatch ok"></span> ≤ 80% of allowable
+        <span class="swatch warn"></span> 80–100% of allowable
+        <span class="swatch fail"></span> &gt; 100% of allowable (exceeds capacity)
+        <span class="swatch na"></span> N/A (no capacity entered)
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Load Breakdown — Selected Case</h2>
+      <div class="grid grid-2">
+        <label>Wind Speed (mph)
+          <select id="r_selWind"></select>
+        </label>
+        <label>Ice Thickness (in)
+          <select id="r_selIce"></select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table id="breakdownTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ METHODOLOGY ============ -->
+  <section class="tab-panel" id="tab-methodology">
+    <div class="card">
+      <h2>Methodology &amp; Assumptions</h2>
+      <div id="methodologyContent" class="methodology"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>Tower Loading Study Tool — planning-level estimate. Prepared: <span id="footerDate"></span></p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
