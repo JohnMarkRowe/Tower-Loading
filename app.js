@@ -4,6 +4,7 @@
    Capacity values are user-supplied (manufacturer / PE data) —
    this tool contains NO proprietary tower capacity ratings.
    ============================================================ */
+function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c])); }
 
 const WIND_SPEEDS = [25, 50, 75, 100, 125, 150];
 const ICE_THICKNESSES = [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
@@ -158,20 +159,20 @@ function renderAppTable() {
     ).join("");
 
     tr.innerHTML = `
-      <td class="desc-cell"><input type="text" data-f="desc" value="${row.desc}" placeholder="e.g. VHF Yagi"></td>
+      <td class="desc-cell"><input type="text" data-f="desc" value="${esc(row.desc)}" placeholder="e.g. VHF Yagi"></td>
       <td><select data-f="category">
             ${["Antenna", "Dish", "Mount/Platform", "Lighting", "Other"]
-              .map((c) => `<option ${row.category === c ? "selected" : ""}>${c}</option>`)
+              .map((c) => `<option ${row.category === c ? "selected" : ""}>${esc(c)}</option>`)
               .join("")}
           </select></td>
       <td><select data-f="shape">${shapeOptions}</select></td>
-      <td><input type="number" step="0.01" data-f="dim1" value="${row.dim1}" ${row.shape === "custom" ? "disabled" : ""}></td>
-      <td><input type="number" step="0.01" data-f="dim2" value="${row.dim2}" ${row.shape === "custom" || row.shape === "dish" ? "disabled" : ""}></td>
+      <td><input type="number" step="0.01" data-f="dim1" value="${esc(row.dim1)}" ${row.shape === "custom" ? "disabled" : ""}></td>
+      <td><input type="number" step="0.01" data-f="dim2" value="${esc(row.dim2)}" ${row.shape === "custom" || row.shape === "dish" ? "disabled" : ""}></td>
       <td><input type="number" step="0.01" data-f="epa" value="${row.epa.toFixed(2)}" ${row.shape === "custom" ? "" : "readonly"}></td>
-      <td><input type="number" step="0.1" data-f="weight" value="${row.weight}"></td>
-      <td><input type="number" step="1" data-f="height" value="${row.height}"></td>
-      <td><input type="number" step="1" min="1" data-f="qty" value="${row.qty}"></td>
-      <td><button class="btn-danger-sm" data-del="${row.id}">✕</button></td>
+      <td><input type="number" step="0.1" data-f="weight" value="${esc(row.weight)}"></td>
+      <td><input type="number" step="1" data-f="height" value="${esc(row.height)}"></td>
+      <td><input type="number" step="1" min="1" data-f="qty" value="${esc(row.qty)}"></td>
+      <td><button class="btn-danger-sm" data-del="${esc(row.id)}">✕</button></td>
     `;
     tbody.appendChild(tr);
 
@@ -229,14 +230,14 @@ function renderFeedTable() {
       .join("");
     const custom = row.cableType === "Custom";
     tr.innerHTML = `
-      <td class="desc-cell"><input type="text" data-f="desc" value="${row.desc}" placeholder="e.g. Main feed to top antenna"></td>
+      <td class="desc-cell"><input type="text" data-f="desc" value="${esc(row.desc)}" placeholder="e.g. Main feed to top antenna"></td>
       <td><select data-f="cableType">${opts}</select></td>
-      <td><input type="number" step="0.001" data-f="od" value="${row.od}" ${custom ? "" : "readonly"}></td>
-      <td><input type="number" step="0.001" data-f="wpf" value="${row.wpf}" ${custom ? "" : "readonly"}></td>
-      <td><input type="number" step="1" data-f="bottom" value="${row.bottom}"></td>
-      <td><input type="number" step="1" data-f="top" value="${row.top}"></td>
-      <td><input type="number" step="1" min="1" data-f="qty" value="${row.qty}"></td>
-      <td><button class="btn-danger-sm" data-del="${row.id}">✕</button></td>
+      <td><input type="number" step="0.001" data-f="od" value="${esc(row.od)}" ${custom ? "" : "readonly"}></td>
+      <td><input type="number" step="0.001" data-f="wpf" value="${esc(row.wpf)}" ${custom ? "" : "readonly"}></td>
+      <td><input type="number" step="1" data-f="bottom" value="${esc(row.bottom)}"></td>
+      <td><input type="number" step="1" data-f="top" value="${esc(row.top)}"></td>
+      <td><input type="number" step="1" min="1" data-f="qty" value="${esc(row.qty)}"></td>
+      <td><button class="btn-danger-sm" data-del="${esc(row.id)}">✕</button></td>
     `;
     tbody.appendChild(tr);
 
@@ -474,12 +475,12 @@ function renderBreakdown() {
     const { epaPerFtIced, weightAddPerFt } = feedIced(row, t_ft);
     const qzMid = qzAt((row.top + row.bottom) / 2, V, tp.exposure, tp.kzt, tp.kd, tp.ke);
     const F = qzMid * tp.gh * epaPerFtIced * runLen * (row.qty || 1);
-    rows.push([row.desc || row.cableType, epaPerFtIced.toFixed(3) + " ft²/ft", ((row.wpf + weightAddPerFt) * runLen * (row.qty || 1)).toFixed(0) + " lb", `${row.bottom}-${row.top} ft`, F.toFixed(1) + " lb"]);
+    rows.push([row.desc || row.cableType, epaPerFtIced.toFixed(3) + " ft²/ft", ((row.wpf + weightAddPerFt) * runLen * (row.qty || 1)).toFixed(0) + " lb", `${esc(row.bottom)}-${esc(row.top)} ft`, F.toFixed(1) + " lb"]);
   });
 
   const table = $("breakdownTable");
   table.innerHTML = "<thead><tr><th>Item</th><th>EPA</th><th>Weight (incl. ice)</th><th>Height</th><th>Wind Force</th></tr></thead><tbody>" +
-    rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody>";
+    rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("") + "</tbody>";
 }
 
 /* ---------------- save / load / export ---------------- */
